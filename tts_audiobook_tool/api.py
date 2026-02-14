@@ -126,7 +126,10 @@ def init(force_cpu: bool = False) -> str:
             model libraries are detected simultaneously.
     """
     os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "true"
-    from huggingface_hub import constants  # noqa: F401  (side-effect import)
+    try:
+        from huggingface_hub import constants  # noqa: F401  (side-effect import)
+    except ImportError:
+        pass  # Not all models need huggingface_hub (e.g. Kokoro via ONNX)
 
     from tts_audiobook_tool.tts import Tts
     from tts_audiobook_tool.tts_model.tts_model_info import TtsModelInfos

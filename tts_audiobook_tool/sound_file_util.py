@@ -1,6 +1,5 @@
 import os
 import librosa
-import sounddevice as sd
 import numpy as np
 import threading
 import soundfile
@@ -155,6 +154,7 @@ class SoundFileUtil:
         SoundFileUtil._stop_playback_event.clear()
 
         def _play_stream(stop_event: threading.Event):
+            import sounddevice as sd
             try:
                 with soundfile.SoundFile(file_path, 'r') as flac_file:
                     stream_finished_event = threading.Event()
@@ -221,6 +221,7 @@ class SoundFileUtil:
         SoundFileUtil._stop_playback_event.clear()
 
         def _play_stream_from_data(sound_data: np.ndarray, samplerate: int, channels: int, stop_event: threading.Event):
+            import sounddevice as sd
             try:
                 stream_finished_event = threading.Event()
                 current_frame = 0
