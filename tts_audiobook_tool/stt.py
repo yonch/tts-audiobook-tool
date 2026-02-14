@@ -13,6 +13,7 @@ class Stt:
     _whisper: WhisperModel | None = None
     _variant = list(SttVariant)[0]
     _config = SttConfig.CUDA_FLOAT16
+    _download_root: str | None = None
 
     @staticmethod
     def get_variant() -> SttVariant:
@@ -35,7 +36,13 @@ class Stt:
             Stt._config = value
             # Clear model, will get lazy re-inited as needed
             Stt.clear_stt_model()
-    
+
+    @staticmethod
+    def set_download_root(path: str | None) -> None:
+        if path != Stt._download_root:
+            Stt._download_root = path
+            Stt.clear_stt_model()
+
     @staticmethod
     def get_whisper() -> WhisperModel:
         """
@@ -65,7 +72,10 @@ class Stt:
             cpu_threads_string = f", {cpu_threads} threads" if cpu_threads else ""
 
             print_init(f"Initializing faster-whisper model ({model}, {device}, {compute_type}{cpu_threads_string})...")
-            Stt._whisper = WhisperModel(model, device=device, compute_type=compute_type, cpu_threads=cpu_threads)
+            kwargs = {}
+            if Stt._download_root:
+                kwargs["download_root"] = Stt._download_root
+            Stt._whisper = WhisperModel(model, device=device, compute_type=compute_type, cpu_threads=cpu_threads, **kwargs)
 
         return Stt._whisper
 

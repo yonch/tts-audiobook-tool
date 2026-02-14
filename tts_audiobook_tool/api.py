@@ -91,8 +91,9 @@ class AudiobookConfig:
 
     # Validation (STT)
     stt_enabled: bool = True
-    stt_variant: str = "large-v3"           # "large-v3" | "large-v3-turbo" | "disabled"
+    stt_variant: str = "large-v3"           # "medium" | "large-v3" | "large-v3-turbo" | "disabled"
     stt_device: str = ""                    # "" = auto-detect, "cpu", "cuda"
+    stt_download_root: str = ""             # directory for Whisper model weights (default: HF cache)
     strictness: str = "moderate"            # "low" | "moderate" | "high"
 
     # Output
@@ -784,6 +785,7 @@ def _validate_sound(
     """
     from tts_audiobook_tool.validate_util import ValidateUtil
     from tts_audiobook_tool.whisper_util import WhisperUtil
+    from tts_audiobook_tool.stt import Stt
     from tts_audiobook_tool.util import strip_ansi_codes
 
     # Check language support
@@ -792,6 +794,9 @@ def _validate_sound(
 
     stt_variant = SttVariant.get_by_id(config.stt_variant) or SttVariant.LARGE_V3
     stt_config = _resolve_stt_config(config)
+
+    if config.stt_download_root:
+        Stt.set_download_root(config.stt_download_root)
 
     words_result = WhisperUtil.transcribe_to_words(
         sound, config.language_code, stt_variant, stt_config,
