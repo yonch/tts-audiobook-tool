@@ -9,6 +9,7 @@ from tts_audiobook_tool.tts_model.fish_base_model import FishBaseModel
 from tts_audiobook_tool.tts_model.glm_base_model import GlmBaseModel
 from tts_audiobook_tool.tts_model.higgs_base_model import HiggsBaseModel
 from tts_audiobook_tool.tts_model.indextts2_base_model import IndexTts2BaseModel
+from tts_audiobook_tool.tts_model.kokoro_base_model import KokoroBaseModel
 from tts_audiobook_tool.tts_model.mira_base_model import MiraBaseModel
 from tts_audiobook_tool.tts_model.none_base_model import NoneBaseModel
 from tts_audiobook_tool.tts_model.oute_base_model import OuteBaseModel
@@ -30,6 +31,7 @@ class Tts:
     _chatterbox: ChatterboxBaseModel | None = None
     _fish: FishBaseModel | None = None
     _higgs: HiggsBaseModel | None = None
+    _kokoro: KokoroBaseModel | None = None
     _vibevoice: VibeVoiceBaseModel | None = None
     _indextts2: IndexTts2BaseModel | None = None
     _glm: GlmBaseModel | None = None
@@ -77,6 +79,8 @@ class Tts:
 
         model_params = { }
         model_params["chatterbox_type"] = project.chatterbox_type
+        model_params["kokoro_model_path"] = project.kokoro_model_path
+        model_params["kokoro_voices_path"] = project.kokoro_voices_path
         model_params["vibevoice_target"] = project.vibevoice_target
         model_params["vibevoice_lora_path"] = project.vibevoice_lora_target
         model_params["indextts2_use_fp16"] = project.indextts2_use_fp16
@@ -96,6 +100,8 @@ class Tts:
 
         dirty = False
         dirty |= new_params.get("chatterbox_type", "") != old_params.get("chatterbox_type", "")
+        dirty |= new_params.get("kokoro_model_path", "") != old_params.get("kokoro_model_path", "")
+        dirty |= new_params.get("kokoro_voices_path", "") != old_params.get("kokoro_voices_path", "")
         dirty |= new_params.get("vibevoice_target", "") != old_params.get("vibevoice_target", "")
         dirty |= new_params.get("vibevoice_lora_path", "") != old_params.get("vibevoice_lora_path", "")
         dirty |= new_params.get("indextts2_use_fp16", False) != old_params.get("indextts2_use_fp16", False)
@@ -122,6 +128,7 @@ class Tts:
             TtsModelInfos.CHATTERBOX: ChatterboxBaseModel,
             TtsModelInfos.FISH: FishBaseModel,
             TtsModelInfos.HIGGS: HiggsBaseModel,
+            TtsModelInfos.KOKORO: KokoroBaseModel,
             TtsModelInfos.VIBEVOICE: VibeVoiceBaseModel,
             TtsModelInfos.INDEXTTS2: IndexTts2BaseModel,
             TtsModelInfos.GLM: GlmBaseModel,
@@ -140,14 +147,15 @@ class Tts:
     @staticmethod
     def instance_exists() -> bool:
         items = [
-            Tts._oute, 
-            Tts._chatterbox, 
-            Tts._fish, 
-            Tts._higgs, 
-            Tts._vibevoice, 
-            Tts._indextts2, 
-            Tts._glm, 
-            Tts._mira, 
+            Tts._oute,
+            Tts._chatterbox,
+            Tts._fish,
+            Tts._higgs,
+            Tts._kokoro,
+            Tts._vibevoice,
+            Tts._indextts2,
+            Tts._glm,
+            Tts._mira,
             Tts._qwen3
         ]
         for item in items:
@@ -163,6 +171,7 @@ class Tts:
             TtsModelInfos.CHATTERBOX: Tts.get_chatterbox,
             TtsModelInfos.FISH: Tts.get_fish,
             TtsModelInfos.HIGGS: Tts.get_higgs,
+            TtsModelInfos.KOKORO: Tts.get_kokoro,
             TtsModelInfos.VIBEVOICE: Tts.get_vibevoice,
             TtsModelInfos.INDEXTTS2: Tts.get_indextts2,
             TtsModelInfos.GLM: Tts.get_glm,
@@ -183,6 +192,7 @@ class Tts:
             TtsModelInfos.CHATTERBOX: Tts._chatterbox,
             TtsModelInfos.FISH: Tts._fish,
             TtsModelInfos.HIGGS: Tts._higgs,
+            TtsModelInfos.KOKORO: Tts._kokoro,
             TtsModelInfos.VIBEVOICE: Tts._vibevoice,
             TtsModelInfos.INDEXTTS2: Tts._indextts2,
             TtsModelInfos.GLM: Tts._glm,
@@ -232,6 +242,17 @@ class Tts:
             Tts._higgs = HiggsModel(device)
             printt()
         return Tts._higgs
+
+    @staticmethod
+    def get_kokoro() -> KokoroBaseModel:
+        if not Tts._kokoro:
+            model_path = Tts._model_params.get("kokoro_model_path", "")
+            voices_path = Tts._model_params.get("kokoro_voices_path", "")
+            print_model_init("onnx")
+            from tts_audiobook_tool.tts_model.kokoro_model import KokoroModel
+            Tts._kokoro = KokoroModel(model_path, voices_path)
+            printt()
+        return Tts._kokoro
 
     @staticmethod
     def get_vibevoice() -> VibeVoiceBaseModel:
@@ -317,6 +338,7 @@ class Tts:
             Tts._chatterbox = None
             Tts._fish = None
             Tts._higgs = None
+            Tts._kokoro = None
             Tts._vibevoice = None
             Tts._indextts2 = None
             Tts._glm = None

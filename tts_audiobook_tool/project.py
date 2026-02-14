@@ -62,6 +62,12 @@ class Project(Saveable):
     oute_voice_json: dict = {} # is loaded from external file, `oute_voice_file_name`
     oute_temperature: float = -1
 
+    kokoro_model_path: str = ""
+    kokoro_voices_path: str = ""
+    kokoro_voice: str = "af_bella"
+    kokoro_speed: float = 1.0
+    kokoro_lang: str = "en-us"
+
     chatterbox_type: ChatterboxType = list(ChatterboxType)[0]
     chatterbox_voice_file_name: str = ""
     chatterbox_temperature: float = -1
@@ -327,6 +333,13 @@ class Project(Saveable):
 
         # TODO: need validation logic for each of these properties (especially file-related ones)
 
+        # Kokoro
+        project.kokoro_model_path = d.get("kokoro_model_path", "")
+        project.kokoro_voices_path = d.get("kokoro_voices_path", "")
+        project.kokoro_voice = d.get("kokoro_voice", "af_bella")
+        project.kokoro_speed = d.get("kokoro_speed", 1.0)
+        project.kokoro_lang = d.get("kokoro_lang", "en-us")
+
         # Chatterbox
         s = d.get("chatterbox_type", "")
         chatterbox_type = ChatterboxType.get_by_id(s)
@@ -494,6 +507,12 @@ class Project(Saveable):
             "oute_voice_file_name": self.oute_voice_file_name,
             "oute_temperature": self.oute_temperature,
 
+            "kokoro_model_path": self.kokoro_model_path,
+            "kokoro_voices_path": self.kokoro_voices_path,
+            "kokoro_voice": self.kokoro_voice,
+            "kokoro_speed": self.kokoro_speed,
+            "kokoro_lang": self.kokoro_lang,
+
             "chatterbox_type": self.chatterbox_type.id,
             "chatterbox_voice_file_name": self.chatterbox_voice_file_name,
             "chatterbox_temperature": self.chatterbox_temperature,
@@ -647,6 +666,8 @@ class Project(Saveable):
             case TtsModelInfos.QWEN3TTS:
                 self.qwen3_voice_file_name = dest_file_name
                 self.qwen3_voice_transcript = transcript
+            case TtsModelInfos.KOKORO:
+                pass  # Kokoro uses named voice presets, not voice clone files
             case _:
                 raise Exception(f"Unsupported tts type {tts_type}")
 
@@ -689,6 +710,8 @@ class Project(Saveable):
                 self.mira_voice_file_name = ""
             case TtsModelInfos.QWEN3TTS:
                 self.qwen3_voice_file_name = ""
+            case TtsModelInfos.KOKORO:
+                pass  # Kokoro uses named voice presets, not voice clone files
             case _:
                 raise ValueError(f"Unsupported tts_type: {tts_type}")
         self.save()

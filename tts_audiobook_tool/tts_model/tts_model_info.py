@@ -309,6 +309,33 @@ class TtsModelInfos(Enum):
         ]
     )
 
+    KOKORO = TtsModelInfo(
+        module_test="kokoro_onnx",
+        file_tag="kokoro",
+        torch_devices = [],  # ONNX runtime, not torch-based
+        sample_rate=24000,
+        max_words_default=80,
+        max_words_reco_range=(40, 120),
+        voice_file_name_attr="",  # no voice cloning; uses named voice presets
+        requires_voice=False,
+        requires_voice_transcript=False,
+        batch_size_project_field="",
+        strictness_high_discouraged=False,
+        semantic_trim_last=False,
+        hallucinates_music=False,
+        un_all_caps=True,
+        requirements_file_name="requirements-kokoro.txt",
+        ui = {
+            "proper_name": "Kokoro TTS",
+            "short_name": "Kokoro",
+            "voice_path_console": "",
+            "voice_path_requestor": ""
+        },
+        substitutions=[
+            ("\u2014", ", "), ("\u2500", ", ")
+        ]
+    )
+
     QWEN3TTS = TtsModelInfo(
         module_test="qwen_tts",
         file_tag="qwen3",
