@@ -301,6 +301,133 @@ On Linux, simply enter:
     pip install flash-attn==2.7.4.post1 --no-build-isolation
 
 
+# Python API
+
+The tool can be used programmatically from Python without the interactive terminal UI. Import from `tts_audiobook_tool.api`:
+
+```python
+from tts_audiobook_tool.api import (
+    init, segment_text, generate_segment, generate_all,
+    concatenate, create_audiobook, AudiobookConfig
+)
+```
+
+### Quick start
+
+```python
+from tts_audiobook_tool.api import init, create_audiobook, AudiobookConfig
+
+# Initialize (detects which TTS model is installed)
+model_name = init()
+
+config = AudiobookConfig(
+    project_dir="/path/to/my-audiobook",
+    kokoro_voice="af_bella",
+    kokoro_speed=1.0,
+)
+
+result = create_audiobook(
+    text=open("book.txt").read(),
+    config=config,
+    on_progress=lambda stage, done, total: print(f"{stage}: {done}/{total}"),
+)
+
+print(f"Output: {result.output_path}")
+print(f"Segments: {result.num_succeeded}/{result.num_segments} succeeded")
+```
+
+### Step-by-step usage
+
+For more control, the pipeline can be run in individual steps:
+
+```python
+from tts_audiobook_tool.api import (
+    init, segment_text, generate_all, concatenate, AudiobookConfig
+)
+
+init()
+
+config = AudiobookConfig(
+    project_dir="/tmp/my-audiobook",
+    kokoro_voice="af_bella",
+)
+
+# 1. Segment text
+groups = segment_text("Chapter one. It was a dark and stormy night.", max_words=40)
+
+# 2. Generate audio for all segments (with retries and STT validation)
+results = generate_all(groups, config)
+
+for r in results:
+    status = "ok" if r.validation_passed else "FAILED"
+    print(f"  Segment {r.index}: {status} - {r.validation_message}")
+
+# 3. Concatenate into final audiobook file
+output_path = concatenate(
+    config, groups,
+    raw_text="Chapter one. It was a dark and stormy night.",
+)
+print(f"Output: {output_path}")
+```
+
+Single-segment generation is also available via `generate_segment()`.
+
+### API reference
+
+#### `init(force_cpu=False) -> str`
+
+Initialize the TTS subsystem. Must be called once before using any other API function. Returns the name of the detected TTS model (e.g. `"Kokoro TTS"`). Raises `RuntimeError` if no model is found.
+
+#### `segment_text(text, language_code="en", max_words=40, strategy="normal") -> list[PhraseGroup]`
+
+Segment raw text into `PhraseGroup` objects. Each group becomes one TTS prompt.
+
+- `strategy`: `"normal"` (one sentence per segment), `"multi"` (multiple sentences up to max words), or `"max_len"` (maximize words per segment).
+
+#### `generate_segment(index, phrase_groups, config, validate=True, force_random_seed=False) -> GenerationResult`
+
+Generate audio for a single segment by index.
+
+#### `generate_all(phrase_groups, config, indices=None, save_segments=True, on_progress=None) -> list[GenerationResult]`
+
+Generate audio for all segments (or a subset via `indices`) with automatic retry logic. Pass `on_progress` as a `callback(completed, total, result)` for progress updates.
+
+#### `concatenate(config, phrase_groups, raw_text="", output_path="") -> str`
+
+Concatenate previously generated segment files into a final audiobook file. Returns the output file path. Applies loudness normalization and embeds player metadata.
+
+#### `create_audiobook(text, config, on_progress=None) -> AudiobookResult`
+
+High-level one-call function: segments text, generates all audio, and concatenates. Pass `on_progress` as a `callback(stage, completed, total)` where stage is `"segment"`, `"generate"`, or `"concatenate"`.
+
+### AudiobookConfig
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `project_dir` | `""` | **Required.** Working directory for project files |
+| `language_code` | `"en"` | Language code for text segmentation |
+| `max_words_per_segment` | `40` | Maximum words per TTS prompt |
+| `segmentation_strategy` | `"normal"` | `"normal"`, `"multi"`, or `"max_len"` |
+| `word_substitutions` | `{}` | Word replacements applied to TTS prompts |
+| `kokoro_voice` | `"af_bella"` | Kokoro voice preset name |
+| `kokoro_speed` | `1.0` | Kokoro speech speed multiplier |
+| `kokoro_lang` | `"en-us"` | Kokoro language code |
+| `kokoro_model_path` | `""` | Custom Kokoro ONNX model path |
+| `kokoro_voices_path` | `""` | Custom Kokoro voices data path |
+| `voice_clone_path` | `""` | Path to voice sample audio file (non-Kokoro models) |
+| `voice_clone_transcript` | `""` | Transcript of voice sample (required by some models) |
+| `max_retries` | `1` | Retries per segment on validation failure |
+| `stt_enabled` | `True` | Enable speech-to-text validation |
+| `stt_variant` | `"large-v3"` | `"large-v3"`, `"large-v3-turbo"`, or `"disabled"` |
+| `stt_device` | `""` | STT device: `""` (auto), `"cpu"`, or `"cuda"` |
+| `strictness` | `"moderate"` | Validation strictness: `"low"`, `"moderate"`, or `"high"` |
+| `export_type` | `"m4a"` | Output format: `"m4a"` or `"flac"` |
+| `normalization` | `"default"` | Loudness normalization: `"default"`, `"stronger"`, or `"none"` |
+| `use_section_sound_effect` | `False` | Insert sound effect at section breaks |
+| `force_cpu` | `False` | Force CPU inference |
+| `model_overrides` | `{}` | Set arbitrary `Project` fields (advanced) |
+
+
 # Usage notes
 
 The app saves its state between sessions, so you can interrupt the program at any time and resume later (important due to how long generating a full-length novel can take).
