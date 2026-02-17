@@ -2,18 +2,32 @@
 Programmatic Python API for tts-audiobook-tool.
 
 Provides importable functions for text-to-speech audiobook generation
-without the interactive terminal UI.
+without the interactive terminal UI. Supports multiple TTS models
+(Kokoro, Chatterbox, etc.) — the active model is auto-detected from
+the installed Python packages.
 
-Usage:
+Usage (Kokoro):
     from tts_audiobook_tool.api import (
-        init, segment_text, generate_segment, generate_all,
-        concatenate, create_audiobook, AudiobookConfig
+        init, create_audiobook, AudiobookConfig
     )
 
     model_name = init()
     config = AudiobookConfig(
         project_dir="/path/to/my-audiobook",
         kokoro_voice="af_bella",
+    )
+    result = create_audiobook(open("book.txt").read(), config)
+    print(result.output_path)
+
+Usage (Chatterbox):
+    model_name = init()
+    config = AudiobookConfig(
+        project_dir="/path/to/my-audiobook",
+        voice_clone_path="/path/to/voice-sample.wav",
+        chatterbox_type="multilingual",
+        temperature=0.8,
+        chatterbox_exaggeration=0.5,
+        chatterbox_cfg=0.5,
     )
     result = create_audiobook(open("book.txt").read(), config)
     print(result.output_path)
@@ -62,6 +76,15 @@ class AudiobookConfig:
     # Voice-clone models (Chatterbox, Fish, Higgs, etc.)
     voice_clone_path: str = ""
     voice_clone_transcript: str = ""
+
+    # Common model parameters (cross-model; -1 = use model default)
+    temperature: float = -1       # Sampling temperature (most models except Kokoro/GLM)
+    seed: int = -1                # Random seed (-1 = random; Chatterbox, Fish, VibeVoice, GLM, Qwen3)
+
+    # Chatterbox-specific
+    chatterbox_type: str = "multilingual"   # "multilingual" | "turbo"
+    chatterbox_exaggeration: float = -1     # Expressiveness (library default 0.5)
+    chatterbox_cfg: float = -1              # CFG weight (library default 0.5)
 
     # Generation
     max_retries: int = 1
@@ -616,6 +639,9 @@ def create_audiobook(
 def _config_to_project(config: AudiobookConfig) -> "Project":
     """Build a Project from AudiobookConfig without going through State."""
     from tts_audiobook_tool.project import Project
+    from tts_audiobook_tool.tts import Tts
+    from tts_audiobook_tool.tts_model.tts_model_info import TtsModelInfos
+    from tts_audiobook_tool.tts_model.chatterbox_base_model import ChatterboxType
 
     project = Project(config.project_dir)
 
@@ -634,6 +660,42 @@ def _config_to_project(config: AudiobookConfig) -> "Project":
     project.kokoro_lang = config.kokoro_lang
     project.kokoro_model_path = config.kokoro_model_path
     project.kokoro_voices_path = config.kokoro_voices_path
+
+    # Chatterbox-specific
+    chatterbox_type = ChatterboxType.get_by_id(config.chatterbox_type)
+    if chatterbox_type is not None:
+        project.chatterbox_type = chatterbox_type
+    if config.chatterbox_exaggeration != -1:
+        project.chatterbox_exaggeration = config.chatterbox_exaggeration
+    if config.chatterbox_cfg != -1:
+        project.chatterbox_cfg = config.chatterbox_cfg
+
+    # Generic temperature -> model-specific project field
+    tts_type = Tts.get_type()
+    if config.temperature != -1:
+        _temp_field = {
+            TtsModelInfos.CHATTERBOX: "chatterbox_temperature",
+            TtsModelInfos.FISH: "fish_temperature",
+            TtsModelInfos.HIGGS: "higgs_temperature",
+            TtsModelInfos.OUTE: "oute_temperature",
+            TtsModelInfos.INDEXTTS2: "indextts2_temperature",
+            TtsModelInfos.MIRA: "mira_temperature",
+            TtsModelInfos.QWEN3TTS: "qwen3_temperature",
+        }.get(tts_type)
+        if _temp_field is not None:
+            setattr(project, _temp_field, config.temperature)
+
+    # Generic seed -> model-specific project field
+    if config.seed != -1:
+        _seed_field = {
+            TtsModelInfos.CHATTERBOX: "chatterbox_seed",
+            TtsModelInfos.FISH: "fish_seed",
+            TtsModelInfos.VIBEVOICE: "vibevoice_seed",
+            TtsModelInfos.GLM: "glm_seed",
+            TtsModelInfos.QWEN3TTS: "qwen3_seed",
+        }.get(tts_type)
+        if _seed_field is not None:
+            setattr(project, _seed_field, config.seed)
 
     # Generation
     project.max_retries = config.max_retries
