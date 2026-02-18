@@ -24,14 +24,29 @@ class ChatterboxModel(ChatterboxBaseModel):
 
     def __init__(self, model_type: ChatterboxType, device: str):
         self._device = device
-        device_obj = torch.device(self._device)
         self._model_type = model_type
 
-        match self._model_type:
-            case ChatterboxType.MULTILINGUAL:
-                self._chatterbox = ChatterboxMultilingualTTS.from_pretrained(device=device_obj)
-            case ChatterboxType.TURBO:
-                self._chatterbox = ChatterboxTurboTTS.from_pretrained(device=device_obj)
+        # Work around upstream bugs in chatterbox-tts:
+        # 1. from_local() compares `device in ["cpu", "mps"]` which fails with a
+        #    torch.device object — pass device as a string.
+        # 2. tts_turbo uses `token=os.getenv("HF_TOKEN") or True` which forces
+        #    HF authentication even for public repos — set a dummy value so the
+        #    `or True` branch is never reached.
+        had_token = "HF_TOKEN" in os.environ
+        old_token = os.environ.get("HF_TOKEN")
+        if not old_token:
+            os.environ["HF_TOKEN"] = "none"
+        try:
+            match self._model_type:
+                case ChatterboxType.MULTILINGUAL:
+                    self._chatterbox = ChatterboxMultilingualTTS.from_pretrained(device=device)
+                case ChatterboxType.TURBO:
+                    self._chatterbox = ChatterboxTurboTTS.from_pretrained(device=device)
+        finally:
+            if not had_token:
+                os.environ.pop("HF_TOKEN", None)
+            elif old_token is not None:
+                os.environ["HF_TOKEN"] = old_token
 
     def supported_languages_multi(self) -> list[str]:
         return list(chatterbox.mtl_tts.SUPPORTED_LANGUAGES)

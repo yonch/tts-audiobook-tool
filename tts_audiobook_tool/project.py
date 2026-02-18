@@ -130,7 +130,7 @@ class Project(Saveable):
                 except:
                     ...
                 if not os.path.exists(ss_path):
-                    return Exception(f"Couldn't create required subdirectory {ss_path}")
+                    raise Exception(f"Couldn't create required subdirectory {ss_path}")
 
         from tts_audiobook_tool.project_sound_segments import ProjectSoundSegments
         self.sound_segments = ProjectSoundSegments(self)
