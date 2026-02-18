@@ -94,6 +94,7 @@ class NormalizationType(Enum):
 
 class SttVariant(tuple[str, str], Enum):
 
+    MEDIUM = ("medium", "Medium model, good accuracy, lower memory")
     LARGE_V3 = ("large-v3", "Best accuracy") # default
     LARGE_V3_TURBO = ("large-v3-turbo", "Less memory, faster")
     DISABLED = ("disabled", "Skips validation step when generating audio, adds no extra memory")
