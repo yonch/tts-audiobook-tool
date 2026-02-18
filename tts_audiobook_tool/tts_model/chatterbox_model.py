@@ -24,14 +24,15 @@ class ChatterboxModel(ChatterboxBaseModel):
 
     def __init__(self, model_type: ChatterboxType, device: str):
         self._device = device
-        device_obj = torch.device(self._device)
         self._model_type = model_type
 
+        # Pass device as a string — the upstream library's from_local() compares
+        # `device in ["cpu", "mps"]` which fails with a torch.device object.
         match self._model_type:
             case ChatterboxType.MULTILINGUAL:
-                self._chatterbox = ChatterboxMultilingualTTS.from_pretrained(device=device_obj)
+                self._chatterbox = ChatterboxMultilingualTTS.from_pretrained(device=device)
             case ChatterboxType.TURBO:
-                self._chatterbox = ChatterboxTurboTTS.from_pretrained(device=device_obj)
+                self._chatterbox = ChatterboxTurboTTS.from_pretrained(device=device)
 
     def supported_languages_multi(self) -> list[str]:
         return list(chatterbox.mtl_tts.SUPPORTED_LANGUAGES)
